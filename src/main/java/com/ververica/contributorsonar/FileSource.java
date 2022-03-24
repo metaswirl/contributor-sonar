@@ -1,4 +1,4 @@
-package org.apache.flink.streaming.examples.github;
+package com.ververica.contributorsonar;
 
 import org.apache.flink.streaming.api.functions.source.SourceFunction;
 import org.apache.flink.util.Preconditions;
@@ -11,12 +11,13 @@ import java.io.IOException;
 import java.io.InputStreamReader;
 import java.time.Duration;
 import java.time.Instant;
+import java.util.Date;
 import java.util.Objects;
 import java.util.zip.GZIPInputStream;
 
 public class FileSource<T extends WithEventTime> implements SourceFunction<T> {
 
-    @Nullable private Instant startTime;
+    @Nullable private Date startTime;
     private final int servingSpeed;
 
     private final Deserializer<T> deserializer;
@@ -29,7 +30,7 @@ public class FileSource<T extends WithEventTime> implements SourceFunction<T> {
     public FileSource(
             String dataFilePath,
             Deserializer<T> deserializer,
-            @Nullable Instant startTime,
+            @Nullable Date startTime,
             int servingSpeedFactor)
             throws IOException {
         this.deserializer = deserializer;
@@ -51,7 +52,7 @@ public class FileSource<T extends WithEventTime> implements SourceFunction<T> {
         while (line != null) {
             final T entity = deserializer.deserialize(line);
             initializeStart(entity);
-            if (entity.getEventTime().isBefore(Objects.requireNonNull(startTime))) {
+            if (entity.getEventTime().before(Objects.requireNonNull(startTime))) {
                 continue;
             }
 
@@ -70,16 +71,16 @@ public class FileSource<T extends WithEventTime> implements SourceFunction<T> {
         }
     }
 
-    private Duration sinceStart(Instant end) {
+    private Duration sinceStart(Date end) {
         Preconditions.checkState(startTime != null, "Start time is not initialized.");
-        return Duration.between(startTime, end);
+        return Duration.ofMillis(end.getTime() - startTime.getTime());
     }
 
     private Duration currentSimulatedTime() {
-        return sinceStart(Instant.now());
+        return sinceStart(new Date(System.currentTimeMillis()));
     }
 
-    private Duration waitDuration(Instant timestamp) {
+    private Duration waitDuration(Date timestamp) {
         final Duration tillTimestamp = sinceStart(timestamp);
         final Duration nowDuration = currentSimulatedTime();
 
@@ -90,7 +91,7 @@ public class FileSource<T extends WithEventTime> implements SourceFunction<T> {
         return actualDuration.toMillis() / servingSpeed;
     }
 
-    private long waitTimeTill(Instant timestamp) {
+    private long waitTimeTill(Date timestamp) {
         final Duration realWaitTime = waitDuration(timestamp);
         return Math.max(0L, simulatedDurationInMillis(realWaitTime));
     }

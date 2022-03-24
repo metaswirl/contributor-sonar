@@ -1,8 +1,8 @@
-package org.apache.flink.streaming.examples.github;
+package com.ververica.contributorsonar;
 
-import java.time.Instant;
+import java.util.Date;
 
 public interface WithEventTime {
 
-    Instant getEventTime();
+    Date getEventTime();
 }

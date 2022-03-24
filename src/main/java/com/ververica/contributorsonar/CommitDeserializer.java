@@ -1,6 +1,6 @@
-package org.apache.flink.streaming.examples.github;
+package com.ververica.contributorsonar;
 
-import org.apache.flink.shaded.jackson2.com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.ObjectMapper;
 
 import java.io.IOException;
 

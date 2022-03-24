@@ -16,7 +16,7 @@
  * limitations under the License.
  */
 
-package com.ververica.contrbiutorsonar;
+package com.ververica.contributorsonar;
 
 import org.apache.flink.streaming.api.environment.StreamExecutionEnvironment;
 

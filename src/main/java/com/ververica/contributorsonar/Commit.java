@@ -1,9 +1,10 @@
-package org.apache.flink.streaming.examples.github;
+package com.ververica.contributorsonar;
 
-import org.apache.flink.shaded.jackson2.com.fasterxml.jackson.annotation.JsonCreator;
-import org.apache.flink.shaded.jackson2.com.fasterxml.jackson.annotation.JsonProperty;
+import com.fasterxml.jackson.annotation.JsonCreator;
+import com.fasterxml.jackson.annotation.JsonFormat;
+import com.fasterxml.jackson.annotation.JsonProperty;
 
-import java.time.Instant;
+import java.util.Date;
 
 public class Commit implements WithEventTime {
 
@@ -17,13 +18,17 @@ public class Commit implements WithEventTime {
     private final String authorLogin;
     private final String authorEmail;
     private final String authorId;
-    private final Instant authoredTimestamp;
+
+    @JsonFormat(shape = JsonFormat.Shape.STRING, pattern = "yyyy-MM-dd'T'hh:mm:ssZ")
+    private final Date authoredTimestamp;
 
     private final String committerName;
     private final String committerLogin;
     private final String committerEmail;
     private final String committerId;
-    private final Instant committedTimestamp;
+
+    @JsonFormat(shape = JsonFormat.Shape.STRING, pattern = "dd-MM-yyyy'T'hh:mm:ssZ")
+    private final Date committedTimestamp;
 
     @JsonCreator
     public Commit(
@@ -35,12 +40,12 @@ public class Commit implements WithEventTime {
             @JsonProperty("author_login") String authorLogin,
             @JsonProperty("author_email") String authorEmail,
             @JsonProperty("author_databaseId") String authorId,
-            @JsonProperty("authorDate") Instant authoredTimestamp,
+            @JsonProperty("authoredDate") Date authoredTimestamp,
             @JsonProperty("committer_name") String committerName,
             @JsonProperty("committer_login") String committerLogin,
             @JsonProperty("committer_email") String committerEmail,
             @JsonProperty("committer_databaseId") String committerId,
-            @JsonProperty("committedDate") Instant committedTimestamp) {
+            @JsonProperty("committedDate") Date committedTimestamp) {
         this.deletionCount = deletionCount;
         this.additionCount = additionCount;
         this.commitHash = commitHash;
@@ -58,7 +63,7 @@ public class Commit implements WithEventTime {
     }
 
     @Override
-    public Instant getEventTime() {
+    public Date getEventTime() {
         return getCommittedTimestamp();
     }
 
@@ -78,7 +83,7 @@ public class Commit implements WithEventTime {
         return message;
     }
 
-    public Instant getCommittedTimestamp() {
+    public Date getCommittedTimestamp() {
         return committedTimestamp;
     }
 
@@ -98,7 +103,7 @@ public class Commit implements WithEventTime {
         return authorId;
     }
 
-    public Instant getAuthoredTimestamp() {
+    public Date getAuthoredTimestamp() {
         return authoredTimestamp;
     }
 

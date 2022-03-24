@@ -1,7 +1,4 @@
-package org.apache.flink.streaming.test.examples.github;
-
-import org.apache.flink.streaming.examples.github.Commit;
-import org.apache.flink.streaming.examples.github.CommitDeserializer;
+package com.ververica.contributorsonar;
 
 import org.junit.jupiter.api.Test;
 

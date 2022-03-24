@@ -1,4 +1,4 @@
-package org.apache.flink.streaming.examples.github;
+package com.ververica.contributorsonar;
 
 import java.io.IOException;
 
