@@ -1,7 +1,9 @@
 package com.ververica.contributorsonar;
 
+import org.apache.flink.configuration.Configuration;
+import org.apache.flink.streaming.api.functions.source.RichSourceFunction;
 import org.apache.flink.streaming.api.functions.source.SourceFunction;
-import org.apache.flink.util.Preconditions;
+import org.apache.flink.util.function.ThrowingConsumer;
 
 import javax.annotation.Nullable;
 
@@ -9,89 +11,77 @@ import java.io.BufferedReader;
 import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStreamReader;
+import java.io.Serializable;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.Objects;
-import java.util.zip.GZIPInputStream;
 
-public class FileSource<T extends WithEventTime> implements SourceFunction<T> {
+public class FileSource<T extends WithEventTime> extends RichSourceFunction<T>
+    implements SourceFunction<T>, Serializable {
 
-  @Nullable private Instant startTime;
+  @Nullable private Instant lastEventTime;
   private final int servingSpeed;
 
   private final Deserializer<T> deserializer;
+  private final String dataFilePath;
+
   private BufferedReader reader;
 
-  public FileSource(String dataFilePath, Deserializer<T> deserializer) throws IOException {
-    this(dataFilePath, deserializer, null, 1);
+  private final ThrowingConsumer<Long, InterruptedException> sleepInMs;
+
+  public FileSource(
+      String dataFilePath,
+      Deserializer<T> deserializer,
+      @Nullable Instant startTime,
+      int servingSpeedFactor) {
+    this(dataFilePath, deserializer, startTime, servingSpeedFactor, Thread::sleep);
   }
 
   public FileSource(
       String dataFilePath,
       Deserializer<T> deserializer,
       @Nullable Instant startTime,
-      int servingSpeedFactor)
-      throws IOException {
+      int servingSpeedFactor,
+      ThrowingConsumer<Long, InterruptedException> sleepInMs) {
     this.deserializer = deserializer;
-    this.reader =
-        new BufferedReader(
-            new InputStreamReader(new GZIPInputStream(new FileInputStream(dataFilePath))));
-    this.startTime = startTime;
+    this.dataFilePath = dataFilePath;
+    this.lastEventTime = startTime;
     this.servingSpeed = servingSpeedFactor;
+    this.sleepInMs = sleepInMs;
+  }
+
+  @Override
+  public void open(Configuration parameters) throws Exception {
+    this.reader = new BufferedReader(new InputStreamReader(new FileInputStream(dataFilePath)));
+    super.open(parameters);
   }
 
   @Override
   public void run(SourceContext<T> sourceContext) throws Exception {
-    loadData(sourceContext);
-  }
-
-  private void loadData(SourceContext<T> sourceContext) throws IOException, InterruptedException {
     String line = reader.readLine();
     while (line != null) {
       final T entity = deserializer.deserialize(line);
       initializeStart(entity);
-      if (entity.getEventTime().isBefore(Objects.requireNonNull(startTime))) {
+      if (entity.getEventTime().isBefore(Objects.requireNonNull(lastEventTime))) {
         continue;
       }
 
-      final long waitTime = waitTimeTill(entity.getEventTime());
-      Thread.sleep(waitTime);
+      final long waitTime =
+          Duration.between(lastEventTime, entity.getEventTime()).toMillis() / servingSpeed;
+      sleepInMs.accept(waitTime);
 
       sourceContext.collect(entity);
+
+      lastEventTime = entity.getEventTime();
 
       line = reader.readLine();
     }
   }
 
   private void initializeStart(T entity) {
-    if (this.startTime == null) {
-      this.startTime = entity.getEventTime();
+    if (this.lastEventTime == null) {
+      this.lastEventTime = entity.getEventTime();
     }
-  }
-
-  private Duration sinceStart(Instant end) {
-    Preconditions.checkState(startTime != null, "Start time is not initialized.");
-    return Duration.between(startTime, end);
-  }
-
-  private Duration currentSimulatedTime() {
-    return sinceStart(Instant.now());
-  }
-
-  private Duration waitDuration(Instant timestamp) {
-    final Duration tillTimestamp = sinceStart(timestamp);
-    final Duration nowDuration = currentSimulatedTime();
-
-    return tillTimestamp.minus(nowDuration);
-  }
-
-  private long simulatedDurationInMillis(Duration actualDuration) {
-    return actualDuration.toMillis() / servingSpeed;
-  }
-
-  private long waitTimeTill(Instant timestamp) {
-    final Duration realWaitTime = waitDuration(timestamp);
-    return Math.max(0L, simulatedDurationInMillis(realWaitTime));
   }
 
   @Override
