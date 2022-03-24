@@ -1,8 +1,8 @@
 package com.ververica.contributorsonar;
 
-import java.util.Date;
+import java.time.Instant;
 
 public interface WithEventTime {
 
-    Date getEventTime();
+  Instant getEventTime();
 }
