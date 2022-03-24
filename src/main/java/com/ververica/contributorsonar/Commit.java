@@ -7,30 +7,32 @@ import java.time.Instant;
 
 public class Commit implements WithEventTime {
 
-  private final int deletionCount;
-  private final int additionCount;
+  public Integer deletionCount;
+  public Integer additionCount;
 
-  private final String commitHash;
-  private final String message;
+  public String commitHash;
+  public String message;
 
-  private final String authorName;
-  private final String authorLogin;
-  private final String authorEmail;
-  private final String authorId;
+  public String authorName;
+  public String authorLogin;
+  public String authorEmail;
+  public String authorId;
 
-  private final Instant authoredTimestamp;
+  public Instant authoredTimestamp;
 
-  private final String committerName;
-  private final String committerLogin;
-  private final String committerEmail;
-  private final String committerId;
+  public String committerName;
+  public String committerLogin;
+  public String committerEmail;
+  public String committerId;
 
-  private final Instant committedTimestamp;
+  public Instant committedTimestamp;
+
+  public Commit() {}
 
   @JsonCreator
   public Commit(
-      @JsonProperty("deletions") int deletionCount,
-      @JsonProperty("additions") int additionCount,
+      @JsonProperty("deletions") Integer deletionCount,
+      @JsonProperty("additions") Integer additionCount,
       @JsonProperty("oid") String commitHash,
       @JsonProperty("message") String message,
       @JsonProperty("author_name") String authorName,
@@ -61,62 +63,6 @@ public class Commit implements WithEventTime {
 
   @Override
   public Instant getEventTime() {
-    return getCommittedTimestamp();
-  }
-
-  public int getDeletionCount() {
-    return deletionCount;
-  }
-
-  public int getAdditionCount() {
-    return additionCount;
-  }
-
-  public String getCommitHash() {
-    return commitHash;
-  }
-
-  public String getMessage() {
-    return message;
-  }
-
-  public Instant getCommittedTimestamp() {
     return committedTimestamp;
-  }
-
-  public String getAuthorName() {
-    return authorName;
-  }
-
-  public String getAuthorLogin() {
-    return authorLogin;
-  }
-
-  public String getAuthorEmail() {
-    return authorEmail;
-  }
-
-  public String getAuthorId() {
-    return authorId;
-  }
-
-  public Instant getAuthoredTimestamp() {
-    return authoredTimestamp;
-  }
-
-  public String getCommitterName() {
-    return committerName;
-  }
-
-  public String getCommitterLogin() {
-    return committerLogin;
-  }
-
-  public String getCommitterEmail() {
-    return committerEmail;
-  }
-
-  public String getCommitterId() {
-    return committerId;
   }
 }

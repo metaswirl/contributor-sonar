@@ -3,18 +3,11 @@ package com.ververica.contributorsonar;
 import org.apache.flink.configuration.Configuration;
 import org.apache.flink.streaming.api.functions.source.RichSourceFunction;
 import org.apache.flink.streaming.api.functions.source.SourceFunction;
-import org.apache.flink.util.function.ThrowingConsumer;
 
 import javax.annotation.Nullable;
-
-import java.io.BufferedReader;
-import java.io.FileInputStream;
-import java.io.IOException;
-import java.io.InputStreamReader;
-import java.io.Serializable;
+import java.io.*;
 import java.time.Duration;
 import java.time.Instant;
-import java.util.Objects;
 
 public class FileSource<T extends WithEventTime> extends RichSourceFunction<T>
     implements SourceFunction<T>, Serializable {
@@ -27,7 +20,11 @@ public class FileSource<T extends WithEventTime> extends RichSourceFunction<T>
 
   private BufferedReader reader;
 
-  private final ThrowingConsumer<Long, InterruptedException> sleepInMs;
+  private final MilliSecondSleeper sleeper;
+
+  public FileSource(String dataFilePath, Deserializer<T> deserializer, int servingSpeedFactor) {
+    this(dataFilePath, deserializer, null, servingSpeedFactor, Thread::sleep);
+  }
 
   public FileSource(
       String dataFilePath,
@@ -42,12 +39,12 @@ public class FileSource<T extends WithEventTime> extends RichSourceFunction<T>
       Deserializer<T> deserializer,
       @Nullable Instant startTime,
       int servingSpeedFactor,
-      ThrowingConsumer<Long, InterruptedException> sleepInMs) {
+      MilliSecondSleeper sleeper) {
     this.deserializer = deserializer;
     this.dataFilePath = dataFilePath;
     this.lastEventTime = startTime;
     this.servingSpeed = servingSpeedFactor;
-    this.sleepInMs = sleepInMs;
+    this.sleeper = sleeper;
   }
 
   @Override
@@ -61,26 +58,18 @@ public class FileSource<T extends WithEventTime> extends RichSourceFunction<T>
     String line = reader.readLine();
     while (line != null) {
       final T entity = deserializer.deserialize(line);
-      initializeStart(entity);
-      if (entity.getEventTime().isBefore(Objects.requireNonNull(lastEventTime))) {
-        continue;
-      }
 
       final long waitTime =
-          Duration.between(lastEventTime, entity.getEventTime()).toMillis() / servingSpeed;
-      sleepInMs.accept(waitTime);
+          lastEventTime == null
+              ? 0
+              : Duration.between(lastEventTime, entity.getEventTime()).toMillis() / servingSpeed;
+      sleeper.sleep(Math.max(waitTime, 0));
 
       sourceContext.collect(entity);
 
       lastEventTime = entity.getEventTime();
 
       line = reader.readLine();
-    }
-  }
-
-  private void initializeStart(T entity) {
-    if (this.lastEventTime == null) {
-      this.lastEventTime = entity.getEventTime();
     }
   }
 
@@ -95,5 +84,9 @@ public class FileSource<T extends WithEventTime> extends RichSourceFunction<T>
     } finally {
       this.reader = null;
     }
+  }
+
+  interface MilliSecondSleeper extends Serializable {
+    void sleep(long millis) throws InterruptedException;
   }
 }

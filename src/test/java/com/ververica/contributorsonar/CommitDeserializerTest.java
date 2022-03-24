@@ -26,9 +26,9 @@ public class CommitDeserializerTest {
 
     final Commit deserializedEntity = testInstance.deserialize(json);
 
-    assertThat(deserializedEntity.getMessage()).isEqualTo(actualMessage);
-    assertThat(deserializedEntity.getCommittedTimestamp()).isEqualTo(commitDate);
-    assertThat(deserializedEntity.getAuthoredTimestamp()).isEqualTo(authoredDate);
-    assertThat(deserializedEntity.getCommitHash()).isEqualTo(oid);
+    assertThat(deserializedEntity.message).isEqualTo(actualMessage);
+    assertThat(deserializedEntity.committedTimestamp).isEqualTo(commitDate);
+    assertThat(deserializedEntity.authoredTimestamp).isEqualTo(authoredDate);
+    assertThat(deserializedEntity.commitHash).isEqualTo(oid);
   }
 }

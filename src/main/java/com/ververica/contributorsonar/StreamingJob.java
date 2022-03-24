@@ -18,47 +18,39 @@
 
 package com.ververica.contributorsonar;
 
+import org.apache.flink.streaming.api.datastream.DataStreamSource;
 import org.apache.flink.streaming.api.environment.StreamExecutionEnvironment;
+import org.apache.flink.table.api.bridge.java.StreamTableEnvironment;
 
 /**
  * Skeleton for a Flink Streaming Job.
  *
- * <p>For a tutorial how to write a Flink streaming application, check the
- * tutorials and examples on the <a href="https://flink.apache.org/docs/stable/">Flink Website</a>.
+ * <p>For a tutorial how to write a Flink streaming application, check the tutorials and examples on
+ * the <a href="https://flink.apache.org/docs/stable/">Flink Website</a>.
  *
- * <p>To package your application into a JAR file for execution, run
- * 'mvn clean package' on the command line.
+ * <p>To package your application into a JAR file for execution, run 'mvn clean package' on the
+ * command line.
  *
  * <p>If you change the name of the main class (with the public static void main(String[] args))
  * method, change the respective entry in the POM.xml file (simply search for 'mainClass').
  */
 public class StreamingJob {
 
-	public static void main(String[] args) throws Exception {
-		// set up the streaming execution environment
-		final StreamExecutionEnvironment env = StreamExecutionEnvironment.getExecutionEnvironment();
+  public static void main(String[] args) throws Exception {
+    final StreamExecutionEnvironment env = StreamExecutionEnvironment.getExecutionEnvironment();
 
-		/*
-		 * Here, you can start creating your execution plan for Flink.
-		 *
-		 * Start with getting some data from the environment, like
-		 * 	env.readTextFile(textPath);
-		 *
-		 * then, transform the resulting DataStream<String> using operations
-		 * like
-		 * 	.filter()
-		 * 	.flatMap()
-		 * 	.join()
-		 * 	.coGroup()
-		 *
-		 * and many more.
-		 * Have a look at the programming guide for the Java API:
-		 *
-		 * https://flink.apache.org/docs/latest/apis/streaming/index.html
-		 *
-		 */
+    String filePath = System.getProperty("user.dir") + "/data/commits.txt";
+    DataStreamSource<Commit> source =
+        env.addSource(new FileSource<>(filePath, new CommitDeserializer(), 24 * 60 * 60));
+    source.returns(Commit.class);
 
-		// execute program
-		env.execute("Flink Streaming Java API Skeleton");
-	}
+    StreamTableEnvironment tableEnv = StreamTableEnvironment.create(env);
+    tableEnv.createTemporaryView("Commits", source);
+    // Schema schema = Schema.newBuilder().column("deletionCount", DataType)
+
+    tableEnv
+        .executeSql(
+            "SELECT authoredTimestamp, committedTimestamp, authorName, committerName, message FROM Commits")
+        .print();
+  }
 }
