@@ -5,7 +5,12 @@ import org.apache.flink.streaming.api.functions.source.RichSourceFunction;
 import org.apache.flink.streaming.api.functions.source.SourceFunction;
 
 import javax.annotation.Nullable;
-import java.io.*;
+
+import java.io.BufferedReader;
+import java.io.FileInputStream;
+import java.io.IOException;
+import java.io.InputStreamReader;
+import java.io.Serializable;
 import java.time.Duration;
 import java.time.Instant;
 
@@ -58,6 +63,10 @@ public class FileSource<T extends WithEventTime> extends RichSourceFunction<T>
     String line = reader.readLine();
     while (line != null) {
       final T entity = deserializer.deserialize(line);
+
+      if (entity.getKey() == null) {
+        continue;
+      }
 
       final long waitTime =
           lastEventTime == null

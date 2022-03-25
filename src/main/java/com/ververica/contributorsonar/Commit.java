@@ -65,4 +65,9 @@ public class Commit implements WithEventTime {
   public Instant getEventTime() {
     return committedTimestamp;
   }
+
+  @Override
+  public String getKey() {
+    return this.authorLogin;
+  }
 }

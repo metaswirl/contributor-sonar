@@ -2,10 +2,16 @@ package com.ververica.contributorsonar;
 
 import org.apache.flink.streaming.api.functions.source.SourceFunction;
 import org.apache.flink.streaming.api.watermark.Watermark;
+
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
-import java.io.*;
+import java.io.BufferedWriter;
+import java.io.ByteArrayOutputStream;
+import java.io.File;
+import java.io.FileWriter;
+import java.io.IOException;
+import java.io.ObjectOutputStream;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
@@ -17,7 +23,7 @@ public class FileSourceTest {
 
   @TempDir File temporaryDirectory;
 
-  private static class TestEntry implements WithEventTime {
+  private static class TestEntry implements WithEventTime<Long> {
 
     private static final Instant base = Instant.now();
 
@@ -30,6 +36,11 @@ public class FileSourceTest {
     @Override
     public Instant getEventTime() {
       return base.plus(diffInMs, ChronoUnit.MILLIS);
+    }
+
+    @Override
+    public Long getKey() {
+      return diffInMs;
     }
   }
 

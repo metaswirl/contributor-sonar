@@ -30,8 +30,11 @@ import org.apache.flink.streaming.api.environment.StreamExecutionEnvironment;
 import org.apache.flink.util.Collector;
 
 import java.time.Instant;
-import java.time.temporal.ChronoField;
+import java.time.LocalDateTime;
+import java.time.ZoneId;
 import java.time.temporal.ChronoUnit;
+import java.time.temporal.WeekFields;
+import java.util.Locale;
 
 /**
  * Skeleton for a Flink Streaming Job.
@@ -54,8 +57,8 @@ public class StreamingJob {
     @Override
     public void flatMap(Commit commit, Collector<Tuple2<String, Integer>> collector)
         throws Exception {
-      final int year = commit.getEventTime().get(ChronoField.YEAR);
-      final int weekOfYear = commit.getEventTime().get(ChronoField.ALIGNED_WEEK_OF_YEAR);
+      final int weekOfYear = extractWeekInYear(commit.getEventTime());
+      final int year = extractYear(commit.getEventTime());
 
       final Tuple3<Integer, Integer, Integer> lastState = streak.value();
       if (isInWeek(lastState.f0, lastState.f1, commit.getEventTime())) {
@@ -75,8 +78,21 @@ public class StreamingJob {
     }
 
     private boolean isInWeek(int currentStateYear, int currentStateWeek, Instant timestamp) {
-      return timestamp.get(ChronoField.YEAR) == currentStateYear
-          && timestamp.get(ChronoField.ALIGNED_WEEK_OF_YEAR) == currentStateWeek;
+      return extractYear(timestamp) == currentStateYear
+          && extractWeekInYear(timestamp) == currentStateWeek;
+    }
+
+    private static int extractWeekInYear(Instant timestamp) {
+      return LocalDateTime.ofInstant(timestamp, ZoneId.systemDefault())
+          .atZone(ZoneId.systemDefault())
+          .get(WeekFields.of(Locale.getDefault()).weekOfYear());
+    }
+
+    private static int extractYear(Instant timestamp) {
+      return LocalDateTime.ofInstant(timestamp, ZoneId.systemDefault())
+          .atZone(ZoneId.systemDefault())
+          .toLocalDate()
+          .getYear();
     }
 
     @Override
@@ -94,10 +110,10 @@ public class StreamingJob {
   public static void main(String[] args) throws Exception {
     final StreamExecutionEnvironment env = StreamExecutionEnvironment.getExecutionEnvironment();
 
-    String filePath = System.getProperty("user.dir") + "/data/commits.txt";
+    String filePath = System.getProperty("user.dir") + "/data/all_commits.txt";
     env.addSource(new FileSource<>(filePath, new CommitDeserializer(), 24 * 60 * 60))
         .returns(Commit.class)
-        .keyBy(Commit::getEventTime)
+        .keyBy(Commit::getKey)
         .flatMap(new CollectStreaks())
         .print();
 
