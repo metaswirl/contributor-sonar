@@ -7,9 +7,6 @@ public class CommitterLevelAssigner {
   static final Integer PLATINUM_LEVEL = 50;
 
   public static CommitterLevel assignLevel(Integer numCommits) throws Exception {
-    if (numCommits == 1) {
-      return CommitterLevel.FIRST;
-    }
     if (numCommits >= PLATINUM_LEVEL) {
       return CommitterLevel.PLATINUM;
     }
@@ -21,6 +18,9 @@ public class CommitterLevelAssigner {
     }
     if (numCommits >= BRONZE_LEVEL) {
       return CommitterLevel.BRONZE;
+    }
+    if (numCommits >= 1) {
+      return CommitterLevel.FIRST;
     }
     throw new Exception(String.format("Illegal value %d", numCommits));
   }

@@ -18,23 +18,8 @@
 
 package com.ververica.contributorsonar;
 
-import org.apache.flink.api.common.functions.RichFlatMapFunction;
-import org.apache.flink.api.common.state.ValueState;
-import org.apache.flink.api.common.state.ValueStateDescriptor;
-import org.apache.flink.api.common.typeinfo.TypeHint;
-import org.apache.flink.api.common.typeinfo.TypeInformation;
-import org.apache.flink.api.java.tuple.Tuple2;
-import org.apache.flink.api.java.tuple.Tuple3;
-import org.apache.flink.configuration.Configuration;
+import org.apache.flink.streaming.api.datastream.DataStream;
 import org.apache.flink.streaming.api.environment.StreamExecutionEnvironment;
-import org.apache.flink.util.Collector;
-
-import java.time.Instant;
-import java.time.LocalDateTime;
-import java.time.ZoneId;
-import java.time.temporal.ChronoUnit;
-import java.time.temporal.WeekFields;
-import java.util.Locale;
 
 /**
  * Skeleton for a Flink Streaming Job.
@@ -50,101 +35,32 @@ import java.util.Locale;
  */
 public class StreamingJob {
 
-  private static class CollectStreaks extends RichFlatMapFunction<Commit, Tuple2<String, Integer>> {
-
-    private transient ValueState<Tuple3<Integer, Integer, Integer>> streak;
-
-    @Override
-    public void flatMap(Commit commit, Collector<Tuple2<String, Integer>> collector)
-        throws Exception {
-      final int weekOfYear = extractWeekInYear(commit.getEventTime());
-      final int year = extractYear(commit.getEventTime());
-
-      final Tuple3<Integer, Integer, Integer> lastState = streak.value();
-      if (isInWeek(lastState.f0, lastState.f1, commit.getEventTime())) {
-        // do nothing
-      } else if (isInPreviousWeek(lastState.f0, lastState.f1, commit.getEventTime())) {
-        int newStreak = lastState.f2 + 1;
-        streak.update(new Tuple3<>(year, weekOfYear, newStreak));
-        collector.collect(new Tuple2<>(commit.authorLogin, newStreak));
-      } else {
-        streak.update(new Tuple3<>(year, weekOfYear, 1));
-      }
-    }
-
-    private boolean isInPreviousWeek(
-        int currentStateYear, int currentStateWeek, Instant timestamp) {
-      return isInWeek(currentStateYear, currentStateWeek, timestamp.minus(7, ChronoUnit.DAYS));
-    }
-
-    private boolean isInWeek(int currentStateYear, int currentStateWeek, Instant timestamp) {
-      return extractYear(timestamp) == currentStateYear
-          && extractWeekInYear(timestamp) == currentStateWeek;
-    }
-
-    private static int extractWeekInYear(Instant timestamp) {
-      return LocalDateTime.ofInstant(timestamp, ZoneId.systemDefault())
-          .atZone(ZoneId.systemDefault())
-          .get(WeekFields.of(Locale.getDefault()).weekOfYear());
-    }
-
-    private static int extractYear(Instant timestamp) {
-      return LocalDateTime.ofInstant(timestamp, ZoneId.systemDefault())
-          .atZone(ZoneId.systemDefault())
-          .toLocalDate()
-          .getYear();
-    }
-
-    @Override
-    public void open(Configuration config) {
-      ValueStateDescriptor<Tuple3<Integer, Integer, Integer>> descriptor =
-          new ValueStateDescriptor<>(
-              "weekly-streak", // the state name
-              TypeInformation.of(
-                  new TypeHint<Tuple3<Integer, Integer, Integer>>() {}), // type information
-              Tuple3.of(0, 0, 0)); // default value of the state, if nothing was set
-      streak = getRuntimeContext().getState(descriptor);
-    }
-  }
-
   public static void main(String[] args) throws Exception {
     final StreamExecutionEnvironment env = StreamExecutionEnvironment.getExecutionEnvironment();
 
-    String filePath = System.getProperty("user.dir") + "/data/all_commits.txt";
-    env.addSource(new FileSource<>(filePath, new CommitDeserializer(), 24 * 60 * 60 * 10))
-        .returns(Commit.class)
-        .keyBy(x -> x.authorId)
-        .flatMap(new CollectStreaks())
-        .print();
+    String filePath = System.getProperty("user.dir") + "/data/last_commits.txt";
+    DataStream<Commit> stream =
+        env.addSource(new FileSource<>(filePath, new CommitDeserializer(), 24 * 60 * 60 * 10))
+            .returns(Commit.class);
 
+    // createCollectStreaksJob(stream);
+    createCommitCounterJob(stream);
     env.execute();
   }
 
-  public static class CommitCounter extends RichFlatMapFunction<Commit, Event> {
-    ValueState<Integer> count;
-    ValueState<CommitterLevel> level;
+  public static void createCommitCounterJob(DataStream<Commit> stream) {
+    stream
+        .filter(x -> x.authorId != null && x.authorName != null)
+        .keyBy(x -> x.authorId)
+        .flatMap(new CommitCounter())
+        .print();
+  }
 
-    @Override
-    public void open(Configuration parameters) throws Exception {
-      super.open(parameters);
-      ValueStateDescriptor<Integer> descCount =
-          new ValueStateDescriptor<>("commitCount", Integer.class);
-      ValueStateDescriptor<CommitterLevel> descLevel =
-          new ValueStateDescriptor<>("commitLevel", CommitterLevel.class);
-      count = getRuntimeContext().getState(descCount);
-      level = getRuntimeContext().getState(descLevel);
-    }
-
-    @Override
-    public void flatMap(Commit commit, Collector<Event> collector) throws Exception {
-      Integer currentCount = count.value() == null ? 1 : count.value() + 1;
-      count.update(currentCount);
-      CommitterLevel newLevel = CommitterLevelAssigner.assignLevel(currentCount);
-      CommitterLevel oldLevel = level.value() == null ? CommitterLevel.NONE : level.value();
-      if (newLevel != oldLevel) {
-        collector.collect(new Event(newLevel, commit.authorName));
-        level.update(newLevel);
-      }
-    }
+  public static void createCollectStreaksJob(DataStream<Commit> stream) {
+    stream
+        .filter(x -> x.authorId != null && x.authorName != null)
+        .keyBy(x -> x.authorId)
+        .flatMap(new CollectStreaks())
+        .print();
   }
 }
