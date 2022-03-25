@@ -113,10 +113,38 @@ public class StreamingJob {
     String filePath = System.getProperty("user.dir") + "/data/all_commits.txt";
     env.addSource(new FileSource<>(filePath, new CommitDeserializer(), 24 * 60 * 60 * 10))
         .returns(Commit.class)
-        .keyBy(Commit::getKey)
+        .keyBy(x -> x.authorId)
         .flatMap(new CollectStreaks())
         .print();
 
     env.execute();
+  }
+
+  public static class CommitCounter extends RichFlatMapFunction<Commit, Event> {
+    ValueState<Integer> count;
+    ValueState<CommitterLevel> level;
+
+    @Override
+    public void open(Configuration parameters) throws Exception {
+      super.open(parameters);
+      ValueStateDescriptor<Integer> descCount =
+          new ValueStateDescriptor<>("commitCount", Integer.class);
+      ValueStateDescriptor<CommitterLevel> descLevel =
+          new ValueStateDescriptor<>("commitLevel", CommitterLevel.class);
+      count = getRuntimeContext().getState(descCount);
+      level = getRuntimeContext().getState(descLevel);
+    }
+
+    @Override
+    public void flatMap(Commit commit, Collector<Event> collector) throws Exception {
+      Integer currentCount = count.value() == null ? 1 : count.value() + 1;
+      count.update(currentCount);
+      CommitterLevel newLevel = CommitterLevelAssigner.assignLevel(currentCount);
+      CommitterLevel oldLevel = level.value() == null ? CommitterLevel.NONE : level.value();
+      if (newLevel != oldLevel) {
+        collector.collect(new Event(newLevel, commit.authorName));
+        level.update(newLevel);
+      }
+    }
   }
 }
