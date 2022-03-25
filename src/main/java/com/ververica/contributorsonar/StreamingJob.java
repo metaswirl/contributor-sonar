@@ -118,12 +118,5 @@ public class StreamingJob {
         .print();
 
     env.execute();
-
-    //    tableEnv
-    //        .executeSql(
-    //            "SELECT each_year, week, authorName, COUNT(*) AS cnt FROM (SELECT extract(WEEK
-    // FROM authoredTimestamp) AS week, extract(YEAR FROM authoredTimestamp) AS each_year,
-    // authorName FROM Commits) GROUP BY authorName, each_year, week")
-    //        .print();
   }
 }
