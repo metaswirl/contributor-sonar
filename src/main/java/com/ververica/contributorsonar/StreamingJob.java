@@ -99,7 +99,7 @@ public class StreamingJob {
     public void open(Configuration config) {
       ValueStateDescriptor<Tuple3<Integer, Integer, Integer>> descriptor =
           new ValueStateDescriptor<>(
-              "average", // the state name
+              "weekly-streak", // the state name
               TypeInformation.of(
                   new TypeHint<Tuple3<Integer, Integer, Integer>>() {}), // type information
               Tuple3.of(0, 0, 0)); // default value of the state, if nothing was set
