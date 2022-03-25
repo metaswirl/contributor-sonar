@@ -65,6 +65,7 @@ public class FileSource<T extends WithEventTime> extends RichSourceFunction<T>
       final T entity = deserializer.deserialize(line);
 
       if (entity.getKey() == null) {
+        line = reader.readLine();
         continue;
       }
 
