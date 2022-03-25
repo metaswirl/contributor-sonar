@@ -63,7 +63,7 @@ public class Commit implements WithEventTime {
 
   @Override
   public Instant getEventTime() {
-    return committedTimestamp;
+    return authoredTimestamp;
   }
 
   @Override
