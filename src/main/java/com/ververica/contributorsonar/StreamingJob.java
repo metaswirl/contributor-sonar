@@ -111,7 +111,7 @@ public class StreamingJob {
     final StreamExecutionEnvironment env = StreamExecutionEnvironment.getExecutionEnvironment();
 
     String filePath = System.getProperty("user.dir") + "/data/all_commits.txt";
-    env.addSource(new FileSource<>(filePath, new CommitDeserializer(), 24 * 60 * 60))
+    env.addSource(new FileSource<>(filePath, new CommitDeserializer(), 24 * 60 * 60 * 10))
         .returns(Commit.class)
         .keyBy(Commit::getKey)
         .flatMap(new CollectStreaks())
